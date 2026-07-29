@@ -9,12 +9,13 @@ const FIREBASE_VERSION = "10.12.5";
  * Firebase Console → Project settings → Your apps → Web app
  */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBkCppLPqWNPbzBuvKGA_w-kAp48g5AbXc",
+  authDomain: "daily-basket-v2.firebaseapp.com",
+  projectId: "daily-basket-v2",
+  storageBucket: "daily-basket-v2.firebasestorage.app",
+  messagingSenderId: "153743551967",
+  appId: "1:153743551967:web:a50efd5af9dde25f5b686a",
+  measurementId: "G-N98Z92FL4P"
 };
 
 const homeScreen = document.getElementById("homeScreen");
