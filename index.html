@@ -2,112 +2,255 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <meta name="theme-color" content="#2f6b4f" />
   <meta
     name="description"
-    content="A simple daily grocery list that works offline."
+    content="Personal and shared grocery lists for you and your roommates."
   />
 
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icon.svg" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
 
   <title>Daily Basket</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
   <main class="app-shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">YOUR DAILY LIST</p>
-        <h1>Daily Basket</h1>
-        <p id="todayLabel" class="today-label"></p>
-      </div>
-
-      <button id="installButton" class="icon-button install-button" hidden aria-label="Install Daily Basket">
-        <span>↓</span>
-      </button>
-    </header>
-
-    <section class="add-card" aria-label="Add grocery item">
-      <form id="addForm">
-        <label class="sr-only" for="itemInput">Grocery item</label>
-        <input
-          id="itemInput"
-          type="text"
-          maxlength="80"
-          autocomplete="off"
-          placeholder="What do you need to buy?"
-          required
-        />
-        <button type="submit" class="add-button" aria-label="Add item">
-          <span>+</span>
-          Add
-        </button>
-      </form>
-    </section>
-
-    <section class="list-section">
-      <div class="section-heading">
+    <!-- Home screen -->
+    <section id="homeScreen">
+      <header class="hero">
         <div>
-          <h2>To buy</h2>
-          <p id="remainingCount">0 items left</p>
+          <p class="eyebrow">DAILY BASKET</p>
+          <h1>Your groceries</h1>
+          <p id="todayLabel" class="muted"></p>
+        </div>
+
+        <button
+          id="installButton"
+          class="icon-button"
+          type="button"
+          hidden
+          aria-label="Install app"
+          title="Install app"
+        >
+          ↓
+        </button>
+      </header>
+
+      <section class="profile-card">
+        <label for="profileName">Your name</label>
+        <input
+          id="profileName"
+          type="text"
+          maxlength="30"
+          placeholder="e.g. Ashish"
+          autocomplete="name"
+        />
+        <small>This name is shown to roommates on shared items.</small>
+      </section>
+
+      <button id="openPersonalButton" class="list-card personal-card" type="button">
+        <span class="list-card-icon">🧺</span>
+        <span class="list-card-content">
+          <strong>Personal list</strong>
+          <small>Private on this device · Works offline</small>
+        </span>
+        <span class="arrow">›</span>
+      </button>
+
+      <div class="section-title">
+        <div>
+          <h2>Shared rooms</h2>
+          <p>Synchronize a list with your roommates.</p>
         </div>
       </div>
 
-      <div id="emptyState" class="empty-state">
-        <div class="empty-icon">🛒</div>
-        <h3>Your basket is empty</h3>
-        <p>Add your first grocery item above.</p>
+      <div class="room-actions">
+        <button id="showCreateRoomButton" class="primary-button" type="button">
+          ＋ Create room
+        </button>
+        <button id="showJoinRoomButton" class="secondary-button" type="button">
+          Join room
+        </button>
       </div>
 
-      <ul id="activeList" class="grocery-list" aria-live="polite"></ul>
+      <section id="roomFormCard" class="form-card" hidden>
+        <div id="createRoomForm" hidden>
+          <div class="form-heading">
+            <h3>Create a room</h3>
+            <button class="close-form-button" type="button" aria-label="Close">×</button>
+          </div>
+
+          <form id="createForm">
+            <label for="roomNameInput">Room name</label>
+            <input
+              id="roomNameInput"
+              type="text"
+              maxlength="40"
+              placeholder="e.g. Green Apartment"
+              required
+            />
+            <button class="primary-button full-width" type="submit">
+              Create shared room
+            </button>
+          </form>
+        </div>
+
+        <div id="joinRoomForm" hidden>
+          <div class="form-heading">
+            <h3>Join a room</h3>
+            <button class="close-form-button" type="button" aria-label="Close">×</button>
+          </div>
+
+          <form id="joinForm">
+            <label for="roomCodeInput">Room code</label>
+            <input
+              id="roomCodeInput"
+              class="code-input"
+              type="text"
+              maxlength="12"
+              placeholder="ABCD-EFGH"
+              autocapitalize="characters"
+              autocomplete="off"
+              required
+            />
+            <button class="primary-button full-width" type="submit">
+              Join room
+            </button>
+          </form>
+        </div>
+
+        <p id="cloudMessage" class="form-message"></p>
+      </section>
+
+      <section class="joined-section">
+        <h3>Your joined rooms</h3>
+
+        <div id="joinedRooms" class="joined-rooms"></div>
+
+        <div id="noRoomsState" class="small-empty-state">
+          <span>🏠</span>
+          <p>You haven’t joined any rooms on this device.</p>
+        </div>
+      </section>
     </section>
 
-    <section class="purchased-section">
-      <button id="purchasedToggle" class="purchased-toggle" type="button" aria-expanded="false">
-        <span>
-          Recently bought
-          <small id="purchasedCount">0</small>
-        </span>
-        <span id="toggleArrow" aria-hidden="true">⌄</span>
-      </button>
+    <!-- List screen -->
+    <section id="listScreen" hidden>
+      <header class="list-header">
+        <button id="backButton" class="back-button" type="button" aria-label="Go back">
+          ‹
+        </button>
 
-      <ul id="purchasedList" class="grocery-list purchased-list" hidden></ul>
-      <button id="clearBoughtButton" class="clear-button" type="button" hidden>
-        Clear bought items
-      </button>
+        <div class="list-header-content">
+          <div class="title-row">
+            <h1 id="listTitle">Personal list</h1>
+            <span id="listTypeBadge" class="badge">Offline</span>
+          </div>
+
+          <p id="listSubtitle" class="muted"></p>
+        </div>
+      </header>
+
+      <section id="roomShareCard" class="share-card" hidden>
+        <div>
+          <span>Room code</span>
+          <strong id="currentRoomCode"></strong>
+        </div>
+        <button id="copyRoomCodeButton" type="button">Copy</button>
+      </section>
+
+      <section class="add-card">
+        <form id="addItemForm">
+          <label class="sr-only" for="itemInput">Grocery item</label>
+          <input
+            id="itemInput"
+            type="text"
+            maxlength="80"
+            autocomplete="off"
+            placeholder="What do you need to buy?"
+            required
+          />
+          <button class="add-button" type="submit">＋ Add</button>
+        </form>
+      </section>
+
+      <div id="syncStatus" class="sync-status" hidden></div>
+
+      <section class="list-section">
+        <div class="section-title compact">
+          <div>
+            <h2>To buy</h2>
+            <p id="remainingCount">0 items left</p>
+          </div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          <div>🛒</div>
+          <h3>Your basket is empty</h3>
+          <p>Add your first grocery item above.</p>
+        </div>
+
+        <ul id="activeList" class="grocery-list" aria-live="polite"></ul>
+      </section>
+
+      <section id="boughtSection" class="bought-section" hidden>
+        <button
+          id="boughtToggle"
+          class="bought-toggle"
+          type="button"
+          aria-expanded="false"
+        >
+          <span>
+            Recently bought
+            <small id="boughtCount">0</small>
+          </span>
+          <span class="toggle-arrow">⌄</span>
+        </button>
+
+        <ul id="boughtList" class="grocery-list" hidden></ul>
+
+        <button id="clearBoughtButton" class="clear-button" type="button" hidden>
+          Clear bought items
+        </button>
+      </section>
     </section>
   </main>
 
   <template id="activeItemTemplate">
-    <li class="grocery-item active-item">
-      <button class="buy-button" type="button" aria-label="Mark as bought">
-        <span>✓</span>
-      </button>
+    <li class="grocery-item">
+      <button class="buy-button" type="button" aria-label="Mark as bought">✓</button>
+
       <div class="item-details">
         <p class="item-name"></p>
-        <p class="item-time"></p>
+        <p class="item-meta"></p>
       </div>
+
       <button class="delete-button" type="button" aria-label="Delete item">×</button>
     </li>
   </template>
 
-  <template id="purchasedItemTemplate">
+  <template id="boughtItemTemplate">
     <li class="grocery-item bought-item">
-      <div class="bought-check" aria-hidden="true">✓</div>
+      <div class="bought-check">✓</div>
+
       <div class="item-details">
         <p class="item-name"></p>
-        <p class="item-time"></p>
+        <p class="item-meta"></p>
       </div>
+
       <button class="undo-button" type="button">Undo</button>
     </li>
   </template>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script src="./app.js" defer></script>
 </body>
 </html>
