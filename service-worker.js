@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-basket-v1";
+const CACHE_NAME = "daily-basket-v2";
 
 const APP_FILES = [
   "./",
@@ -19,11 +19,11 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
+    caches.keys().then((cacheNames) =>
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
       )
     )
   );
@@ -32,14 +32,49 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const request = event.request;
+  const requestUrl = new URL(request.url);
+
+  if (
+    request.method !== "GET" ||
+    requestUrl.origin !== self.location.origin
+  ) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put("./index.html", copy);
+          });
+
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+
+    return;
+  }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() => caches.match("./index.html"))
-      );
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+
+      return fetch(request).then((networkResponse) => {
+        if (networkResponse.ok) {
+          const copy = networkResponse.clone();
+
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, copy);
+          });
+        }
+
+        return networkResponse;
+      });
     })
   );
 });
