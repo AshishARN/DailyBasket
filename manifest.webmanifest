@@ -1,15 +1,16 @@
 {
   "name": "Daily Basket",
   "short_name": "Basket",
-  "description": "A simple daily grocery list that works offline.",
+  "description": "Personal and shared grocery lists.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f8f7f2",
   "theme_color": "#2f6b4f",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
