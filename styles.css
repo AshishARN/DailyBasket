@@ -472,6 +472,9 @@ h1 {
   margin: 0;
   padding: 0;
   list-style: none;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .grocery-item {
@@ -483,6 +486,10 @@ h1 {
   border-radius: 17px;
   padding: 12px;
   background: white;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .buy-button,
@@ -517,14 +524,21 @@ h1 {
 .item-details {
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .item-name {
+  font-weight: 750;
+  display: -webkit-box;
   overflow: hidden;
   margin-bottom: 5px;
-  font-weight: 750;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .item-meta {
@@ -642,6 +656,17 @@ h1 {
   margin-bottom: 0;
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.buy-button,
+.bought-check,
+.delete-button,
+.undo-button {
+  flex-shrink: 0;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 .toast {
