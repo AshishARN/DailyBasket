@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-basket-v2";
+const CACHE_NAME = "daily-basket-v3";
 
 const APP_FILES = [
   "./",

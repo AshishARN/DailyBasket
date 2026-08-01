@@ -37,6 +37,10 @@ const syncStatus = document.getElementById("syncStatus");
 
 const addItemForm = document.getElementById("addItemForm");
 const itemInput = document.getElementById("itemInput");
+const urgentItemInput = document.getElementById("urgentItemInput");
+const itemFilterInputs = document.querySelectorAll(
+  'input[name="itemFilter"]'
+);
 const activeList = document.getElementById("activeList");
 const boughtList = document.getElementById("boughtList");
 const emptyState = document.getElementById("emptyState");
@@ -51,6 +55,7 @@ const toast = document.getElementById("toast");
 let currentMode = null;
 let currentRoom = null;
 let currentItems = [];
+let currentItemFilter = "all";
 let roomUnsubscribe = null;
 let firebasePromise = null;
 let deferredInstallPrompt = null;
@@ -283,8 +288,21 @@ function showHome() {
   renderJoinedRooms();
 }
 
+function resetItemFilter() {
+  currentItemFilter = "all";
+
+  const allFilter = document.querySelector(
+    'input[name="itemFilter"][value="all"]'
+  );
+
+  if (allFilter) {
+    allFilter.checked = true;
+  }
+}
+
 function openPersonalList() {
   closeRoomSubscription();
+  resetItemFilter();
 
   currentMode = "personal";
   currentRoom = null;
@@ -305,6 +323,7 @@ function openPersonalList() {
 
 async function openRoom(room) {
   closeRoomSubscription();
+  resetItemFilter();
 
   currentMode = "room";
   currentRoom = room;
@@ -377,7 +396,13 @@ async function openRoom(room) {
 /* ---------- Item rendering ---------- */
 
 function renderItems() {
-  const activeItems = currentItems.filter((item) => !item.boughtAt);
+  const allActiveItems = currentItems.filter((item) => !item.boughtAt);
+
+  const activeItems =
+    currentItemFilter === "urgent"
+      ? allActiveItems.filter((item) => item.urgent === true)
+      : allActiveItems;
+
   const purchasedItems = currentItems
     .filter((item) => item.boughtAt)
     .sort((a, b) => getTimestamp(b.boughtAt) - getTimestamp(a.boughtAt));
@@ -395,10 +420,30 @@ function renderItems() {
 
   emptyState.hidden = activeItems.length > 0;
 
-  remainingCount.textContent =
-    activeItems.length === 1
-      ? "1 item left"
-      : `${activeItems.length} items left`;
+  const emptyTitle = emptyState.querySelector("h3");
+  const emptyMessage = emptyState.querySelector("p");
+
+  if (currentItemFilter === "urgent") {
+    remainingCount.textContent =
+      activeItems.length === 1
+        ? "1 urgent item"
+        : `${activeItems.length} urgent items`;
+
+    emptyTitle.textContent = "No urgent items";
+
+    emptyMessage.textContent =
+      allActiveItems.length > 0
+        ? "Switch to All items to see the rest of your list."
+        : "Nothing urgent right now.";
+  } else {
+    remainingCount.textContent =
+      activeItems.length === 1
+        ? "1 item left"
+        : `${activeItems.length} items left`;
+
+    emptyTitle.textContent = "Your basket is empty";
+    emptyMessage.textContent = "Add your first grocery item above.";
+  }
 
   boughtCount.textContent = purchasedItems.length;
   boughtSection.hidden = purchasedItems.length === 0;
@@ -414,6 +459,12 @@ function getTimestamp(value) {
 function createActiveItemElement(item) {
   const template = document.getElementById("activeItemTemplate");
   const fragment = template.content.cloneNode(true);
+  const groceryItem = fragment.querySelector(".grocery-item");
+  const isUrgent = item.urgent === true;
+
+  if (isUrgent) {
+    groceryItem.classList.add("urgent-item");
+  }
 
   fragment.querySelector(".item-name").textContent = item.name;
 
@@ -421,8 +472,10 @@ function createActiveItemElement(item) {
     ? ` by ${item.createdByName}`
     : "";
 
+  const priorityLabel = isUrgent ? "Urgent · " : "";
+
   fragment.querySelector(".item-meta").textContent =
-    `Added ${formatDateTime(item.createdAt)}${addedBy}`;
+    `${priorityLabel}Added ${formatDateTime(item.createdAt)}${addedBy}`;
 
   fragment.querySelector(".buy-button").addEventListener("click", () => {
     markItemBought(item);
@@ -438,6 +491,12 @@ function createActiveItemElement(item) {
 function createBoughtItemElement(item) {
   const template = document.getElementById("boughtItemTemplate");
   const fragment = template.content.cloneNode(true);
+  const groceryItem = fragment.querySelector(".grocery-item");
+  const isUrgent = item.urgent === true;
+
+  if (isUrgent) {
+    groceryItem.classList.add("urgent-item");
+  }
 
   fragment.querySelector(".item-name").textContent = item.name;
 
@@ -445,8 +504,10 @@ function createBoughtItemElement(item) {
     ? ` by ${item.boughtByName}`
     : "";
 
+  const priorityLabel = isUrgent ? "Urgent · " : "";
+
   fragment.querySelector(".item-meta").textContent =
-    `Bought ${formatDateTime(item.boughtAt)}${boughtBy}`;
+    `${priorityLabel}Bought ${formatDateTime(item.boughtAt)}${boughtBy}`;
 
   fragment.querySelector(".undo-button").addEventListener("click", () => {
     undoBoughtItem(item);
@@ -461,10 +522,11 @@ function savePersonalItems() {
   writeJSON(PERSONAL_ITEMS_KEY, currentItems);
 }
 
-function addPersonalItem(name) {
+function addPersonalItem(name, urgent = false) {
   currentItems.unshift({
     id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
     name,
+    urgent: urgent === true,
     createdAt: new Date().toISOString(),
     createdByName: getProfileName(),
     boughtAt: null,
@@ -499,7 +561,7 @@ function deletePersonalItem(item) {
 
 /* ---------- Shared room operations ---------- */
 
-async function addRoomItem(name) {
+async function addRoomItem(name, urgent = false) {
   const firebase = await initializeFirebase();
 
   await firebase.addDoc(
@@ -511,6 +573,7 @@ async function addRoomItem(name) {
     ),
     {
       name,
+      urgent: urgent === true,
       createdAt: firebase.serverTimestamp(),
       createdByName: getProfileName(),
       createdByUid: firebase.auth.currentUser.uid,
@@ -780,6 +843,7 @@ addItemForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const name = itemInput.value.trim();
+  const urgent = urgentItemInput.checked;
   const button = event.submitter;
 
   if (!name) return;
@@ -788,14 +852,20 @@ addItemForm.addEventListener("submit", async (event) => {
 
   try {
     if (currentMode === "personal") {
-      addPersonalItem(name);
+      addPersonalItem(name, urgent);
     } else if (currentMode === "room") {
-      await addRoomItem(name);
+      await addRoomItem(name, urgent);
     }
 
     itemInput.value = "";
+    urgentItemInput.checked = false;
     itemInput.focus();
-    showToast(`${name} added`);
+
+    showToast(
+      urgent
+        ? `${name} added as urgent`
+        : `${name} added`
+    );
   } catch (error) {
     console.error(error);
     showToast("Unable to add the item");
@@ -879,6 +949,15 @@ window.addEventListener("offline", () => {
   if (currentMode === "room") {
     syncStatus.textContent = "Offline · shared updates are unavailable";
   }
+});
+
+itemFilterInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    if (!input.checked) return;
+
+    currentItemFilter = input.value;
+    renderItems();
+  });
 });
 
 /* ---------- PWA installation ---------- */

@@ -702,6 +702,182 @@ body {
   white-space: nowrap;
 }
 
+/* Add-item layout */
+
+.add-card form {
+  display: grid;
+  gap: 6px;
+}
+
+.add-row {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+
+.add-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Urgent checkbox */
+
+.urgent-option {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin: 0 7px 5px;
+  padding: 8px 2px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.urgent-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.urgent-checkbox {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #d4a6a1;
+  border-radius: 7px;
+  color: #bd5a50;
+  background: #fff8f7;
+  font-size: 0.8rem;
+  font-weight: 900;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.urgent-option input:checked + .urgent-checkbox {
+  border-color: #c9584d;
+  color: white;
+  background: #c9584d;
+  transform: scale(1.04);
+}
+
+.urgent-option input:focus-visible + .urgent-checkbox {
+  outline: 3px solid rgba(201, 88, 77, 0.2);
+  outline-offset: 2px;
+}
+
+/* All/Urgent filter */
+
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: -8px 0 24px;
+}
+
+.filter-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.filter-options {
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 4px;
+  background: white;
+}
+
+.filter-options label {
+  cursor: pointer;
+}
+
+.filter-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter-options span {
+  display: block;
+  border-radius: 9px;
+  padding: 7px 11px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.filter-options input:checked + span {
+  color: white;
+  background: var(--green);
+}
+
+.filter-options input:focus-visible + span {
+  outline: 3px solid rgba(47, 107, 79, 0.18);
+  outline-offset: 1px;
+}
+
+/* Urgent grocery rows */
+
+.grocery-item.urgent-item {
+  border-color: #e8b5af;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(201, 88, 77, 0.12),
+      rgba(255, 255, 255, 0.96) 30%
+    );
+  box-shadow: inset 4px 0 0 #c9584d;
+}
+
+.grocery-item.urgent-item .item-name {
+  color: #9f3e36;
+}
+
+.grocery-item.urgent-item .item-meta {
+  color: #a65a53;
+}
+
+.grocery-item.urgent-item .buy-button {
+  border-color: #d98c84;
+}
+
+.grocery-item.urgent-item .buy-button:hover,
+.grocery-item.urgent-item .buy-button:focus-visible {
+  border-color: #c9584d;
+  background: #c9584d;
+}
+
+/* Keep bought urgent items visually subdued but identifiable */
+
+.bought-item.urgent-item {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(201, 88, 77, 0.08),
+      #f4f7f4 35%
+    );
+}
+
 [hidden] {
   display: none !important;
 }

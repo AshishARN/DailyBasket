@@ -168,20 +168,54 @@
 
       <section class="add-card">
         <form id="addItemForm">
-          <label class="sr-only" for="itemInput">Grocery item</label>
-          <input
-            id="itemInput"
-            type="text"
-            maxlength="80"
-            autocomplete="off"
-            placeholder="What do you need to buy?"
-            required
-          />
-          <button class="add-button" type="submit">＋ Add</button>
+          <div class="add-row">
+            <label class="sr-only" for="itemInput">Grocery item</label>
+            <input
+              id="itemInput"
+              type="text"
+              maxlength="80"
+              autocomplete="off"
+              placeholder="What do you need to buy?"
+              required
+            />
+
+            <button class="add-button" type="submit">＋ Add</button>
+          </div>
+
+          <label class="urgent-option">
+            <input id="urgentItemInput" type="checkbox" />
+            <span class="urgent-checkbox" aria-hidden="true">!</span>
+            <span>Mark this item as urgent</span>
+          </label>
         </form>
       </section>
 
       <div id="syncStatus" class="sync-status" hidden></div>
+
+      <div class="filter-bar">
+        <span class="filter-label">Show</span>
+
+        <div class="filter-options" role="radiogroup" aria-label="Filter grocery items">
+          <label>
+            <input
+              type="radio"
+              name="itemFilter"
+              value="all"
+              checked
+            />
+            <span>All items</span>
+          </label>
+
+          <label>
+            <input
+              type="radio"
+              name="itemFilter"
+              value="urgent"
+            />
+            <span>Urgent</span>
+          </label>
+        </div>
+      </div>
 
       <section class="list-section">
         <div class="section-title compact">
