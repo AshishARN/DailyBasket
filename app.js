@@ -5,8 +5,7 @@ const PROFILE_NAME_KEY = "daily-basket-profile-name";
 const FIREBASE_VERSION = "10.12.5";
 
 /*
- * Replace these placeholder values with the configuration shown in:
- * Firebase Console → Project settings → Your apps → Web app
+ * Firebase project configuration (Spark Free Tier)
  */
 const firebaseConfig = {
   apiKey: "AIzaSyBkCppLPqWNPbzBuvKGA_w-kAp48g5AbXc",
@@ -33,6 +32,9 @@ const listSubtitle = document.getElementById("listSubtitle");
 const listTypeBadge = document.getElementById("listTypeBadge");
 const roomShareCard = document.getElementById("roomShareCard");
 const currentRoomCode = document.getElementById("currentRoomCode");
+const roomNotificationCard = document.getElementById("roomNotificationCard");
+const notificationStatusText = document.getElementById("notificationStatusText");
+const toggleNotificationButton = document.getElementById("toggleNotificationButton");
 const syncStatus = document.getElementById("syncStatus");
 
 const addItemForm = document.getElementById("addItemForm");
@@ -60,6 +62,7 @@ let roomUnsubscribe = null;
 let firebasePromise = null;
 let deferredInstallPrompt = null;
 let toastTimer = null;
+let isInitialSnapshot = true;
 
 function readJSON(key, fallback = []) {
   try {
@@ -109,7 +112,7 @@ function showToast(message) {
 
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
-  }, 2400);
+  }, 3200);
 }
 
 function showCloudMessage(message, isError = false) {
@@ -118,6 +121,7 @@ function showCloudMessage(message, isError = false) {
 }
 
 function setBusy(button, busy, busyText) {
+  if (!button) return;
   if (!button.dataset.originalText) {
     button.dataset.originalText = button.textContent;
   }
@@ -133,6 +137,161 @@ function setTodayLabel() {
       day: "numeric",
       month: "long"
     }).format(new Date());
+}
+
+/* ---------- Audio chime for urgent notifications ---------- */
+
+function playNotificationChime() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const audioCtx = new AudioContextClass();
+    const now = audioCtx.currentTime;
+
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, now); // D5
+    osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+
+    osc2.type = "triangle";
+    osc2.frequency.setValueAtTime(880, now + 0.12);
+    osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.28); // D6
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.12);
+    osc1.stop(now + 0.45);
+    osc2.stop(now + 0.45);
+  } catch {
+    // Autoplay restrictions or audio unsupported
+  }
+}
+
+/* ---------- Real-time notifications ---------- */
+
+function getRoomNotificationKey(roomCode) {
+  return `daily-basket-notifications-${roomCode}`;
+}
+
+function isRoomNotificationEnabled(roomCode) {
+  return localStorage.getItem(getRoomNotificationKey(roomCode)) === "true";
+}
+
+function setRoomNotificationEnabled(roomCode, enabled) {
+  if (enabled) {
+    localStorage.setItem(getRoomNotificationKey(roomCode), "true");
+  } else {
+    localStorage.removeItem(getRoomNotificationKey(roomCode));
+  }
+}
+
+function triggerRealtimeAlert(title, body, roomCode) {
+  // 1. In-app toast
+  showToast(`${title} - ${body}`);
+
+  // 2. Audible chime
+  playNotificationChime();
+
+  // 3. System notification if permitted
+  if (
+    "Notification" in window &&
+    Notification.permission === "granted" &&
+    isRoomNotificationEnabled(roomCode)
+  ) {
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.showNotification(title, {
+            body,
+            icon: "./icon.svg",
+            badge: "./icon.svg",
+            data: { roomCode },
+            vibrate: [200, 100, 200]
+          });
+        })
+        .catch(() => {
+          new Notification(title, { body, icon: "./icon.svg" });
+        });
+    } else {
+      new Notification(title, { body, icon: "./icon.svg" });
+    }
+  }
+}
+
+function updateNotificationUI(roomCode) {
+  if (!roomNotificationCard || !toggleNotificationButton || !notificationStatusText) return;
+
+  if (!("Notification" in window)) {
+    notificationStatusText.textContent = "Browser notifications are not supported on this device";
+    toggleNotificationButton.textContent = "Unsupported";
+    toggleNotificationButton.disabled = true;
+    toggleNotificationButton.className = "notification-button disabled-btn";
+    return;
+  }
+
+  const permission = Notification.permission;
+  const isEnabled = isRoomNotificationEnabled(roomCode);
+
+  if (permission === "denied") {
+    notificationStatusText.textContent = "Notifications are blocked in your browser site settings";
+    toggleNotificationButton.textContent = "Blocked ✕";
+    toggleNotificationButton.disabled = true;
+    toggleNotificationButton.className = "notification-button disabled-btn";
+  } else if (permission === "granted" && isEnabled) {
+    notificationStatusText.textContent = "Active · You'll receive instant alerts for urgent items";
+    toggleNotificationButton.textContent = "Active ✓";
+    toggleNotificationButton.disabled = false;
+    toggleNotificationButton.className = "notification-button active";
+  } else {
+    notificationStatusText.textContent = "Get notified instantly when urgent items are added or bought";
+    toggleNotificationButton.textContent = "Enable 🔔";
+    toggleNotificationButton.disabled = false;
+    toggleNotificationButton.className = "notification-button";
+  }
+}
+
+async function handleNotificationToggle() {
+  if (!currentRoom) return;
+
+  if (!("Notification" in window)) {
+    showToast("Notifications are not supported in this browser.");
+    return;
+  }
+
+  const isEnabled = isRoomNotificationEnabled(currentRoom.code);
+
+  if (isEnabled && Notification.permission === "granted") {
+    setRoomNotificationEnabled(currentRoom.code, false);
+    showToast("Urgent notifications turned off for this room.");
+    updateNotificationUI(currentRoom.code);
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setRoomNotificationEnabled(currentRoom.code, true);
+      showToast("Urgent notifications enabled for this room! 🔔");
+      playNotificationChime();
+    } else if (permission === "denied") {
+      showToast("Notifications blocked. Please enable them in browser settings.");
+    }
+  } catch (error) {
+    console.error("Error requesting notification permission:", error);
+    showToast("Could not enable notifications");
+  } finally {
+    updateNotificationUI(currentRoom.code);
+  }
 }
 
 /* ---------- Firebase ---------- */
@@ -259,7 +418,8 @@ function generateRoomCode() {
 }
 
 function cleanRoomCode(code) {
-  return code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+  if (!code) return "";
+  return String(code).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
 }
 
 function formatRoomCode(code) {
@@ -312,6 +472,7 @@ function openPersonalList() {
   listSubtitle.textContent = "Private and stored only on this device";
   listTypeBadge.textContent = "Offline";
   roomShareCard.hidden = true;
+  roomNotificationCard.hidden = true;
   syncStatus.hidden = true;
 
   homeScreen.hidden = true;
@@ -328,18 +489,21 @@ async function openRoom(room) {
   currentMode = "room";
   currentRoom = room;
   currentItems = [];
+  isInitialSnapshot = true;
 
   listTitle.textContent = room.name;
   listSubtitle.textContent = "Shared with your roommates";
   listTypeBadge.textContent = "Shared";
   currentRoomCode.textContent = formatRoomCode(room.code);
   roomShareCard.hidden = false;
+  roomNotificationCard.hidden = false;
 
   homeScreen.hidden = true;
   listScreen.hidden = false;
 
   syncStatus.hidden = false;
   syncStatus.textContent = "Connecting to room…";
+  updateNotificationUI(room.code);
   renderItems();
 
   try {
@@ -360,6 +524,7 @@ async function openRoom(room) {
 
     listTitle.textContent = currentRoom.name;
     saveJoinedRoom(currentRoom);
+    updateNotificationUI(currentRoom.code);
 
     const itemsQuery = firebase.query(
       firebase.collection(firebase.db, "rooms", room.code, "items"),
@@ -369,10 +534,49 @@ async function openRoom(room) {
     roomUnsubscribe = firebase.onSnapshot(
       itemsQuery,
       (snapshot) => {
-        currentItems = snapshot.docs.map((itemDocument) => ({
-          id: itemDocument.id,
-          ...itemDocument.data()
-        }));
+        const currentUid = firebase.auth.currentUser?.uid;
+
+        if (isInitialSnapshot) {
+          isInitialSnapshot = false;
+          currentItems = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        } else {
+          // Detect real-time additions and purchases by other roommates
+          snapshot.docChanges().forEach((change) => {
+            const itemData = change.doc.data();
+            const itemId = change.doc.id;
+
+            if (change.type === "added") {
+              if (itemData.urgent === true && itemData.createdByUid !== currentUid) {
+                const creator = itemData.createdByName ? itemData.createdByName.trim() : "A roommate";
+                triggerRealtimeAlert(
+                  `🚨 Urgent item: ${itemData.name}`,
+                  `${creator} added "${itemData.name}" to ${currentRoom.name}.`,
+                  currentRoom.code
+                );
+              }
+            } else if (change.type === "modified") {
+              const previousItem = currentItems.find((entry) => entry.id === itemId);
+              const wasBought = (!previousItem || !previousItem.boughtAt) && Boolean(itemData.boughtAt);
+
+              if (wasBought && itemData.urgent === true && itemData.boughtByUid !== currentUid) {
+                const buyer = itemData.boughtByName ? itemData.boughtByName.trim() : "A roommate";
+                triggerRealtimeAlert(
+                  `✅ Urgent item bought: ${itemData.name}`,
+                  `${buyer} bought "${itemData.name}" from ${currentRoom.name}.`,
+                  currentRoom.code
+                );
+              }
+            }
+          });
+
+          currentItems = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        }
 
         syncStatus.textContent = navigator.onLine
           ? "Room is synchronized"
@@ -746,6 +950,10 @@ document
 
 document.getElementById("backButton").addEventListener("click", showHome);
 
+if (toggleNotificationButton) {
+  toggleNotificationButton.addEventListener("click", handleNotificationToggle);
+}
+
 document
   .getElementById("showCreateRoomButton")
   .addEventListener("click", () => {
@@ -863,7 +1071,7 @@ addItemForm.addEventListener("submit", async (event) => {
 
     showToast(
       urgent
-        ? `${name} added as urgent`
+        ? `${name} added as urgent 🚨`
         : `${name} added`
     );
   } catch (error) {
@@ -983,14 +1191,43 @@ window.addEventListener("appinstalled", () => {
   showToast("Daily Basket installed");
 });
 
-/* ---------- Service worker ---------- */
+/* ---------- Deep Link Room Loading ---------- */
+
+async function checkUrlForRoomCode() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get("room");
+    if (!roomParam) return;
+
+    const cleaned = cleanRoomCode(roomParam);
+    if (cleaned.length === 10) {
+      const joinedRooms = getJoinedRooms();
+      const existing = joinedRooms.find((r) => r.code === cleaned);
+      if (existing) {
+        await openRoom(existing);
+      } else {
+        const room = await joinRoom(cleaned);
+        await openRoom(room);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to auto-open room from URL parameter:", error);
+  }
+}
+
+/* ---------- Service worker & Init ---------- */
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("./service-worker.js")
+      .then(() => {
+        checkUrlForRoomCode();
+      })
       .catch(console.error);
   });
+} else {
+  checkUrlForRoomCode();
 }
 
 setTodayLabel();

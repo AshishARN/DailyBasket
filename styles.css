@@ -428,6 +428,75 @@ h1 {
   font-weight: 750;
 }
 
+.notification-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #dbe8df;
+  border-radius: 16px;
+  padding: 11px 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(34, 65, 47, 0.04);
+}
+
+.notification-card-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.notification-icon {
+  font-size: 1.2rem;
+  flex: 0 0 auto;
+}
+
+.notification-card-text div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notification-card-text strong {
+  font-size: 0.84rem;
+}
+
+.notification-card-text small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.notification-button {
+  flex: 0 0 auto;
+  border: 1px solid #c5d7ca;
+  border-radius: 10px;
+  padding: 7px 12px;
+  color: var(--green-dark);
+  background: var(--green-soft);
+  font-size: 0.76rem;
+  font-weight: 750;
+  transition: all 0.2s ease;
+}
+
+.notification-button:hover:not(:disabled) {
+  background: #d8ebd0;
+  border-color: var(--green);
+}
+
+.notification-button.active {
+  border-color: var(--green);
+  color: white;
+  background: var(--green);
+}
+
+.notification-button.disabled-btn {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .add-card {
   margin-bottom: 25px;
   border: 1px solid var(--border);

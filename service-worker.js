@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-basket-v3";
+const CACHE_NAME = "daily-basket-v4";
 
 const APP_FILES = [
   "./",
@@ -6,7 +6,8 @@ const APP_FILES = [
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon.svg",
+  "./firebase-messaging-sw.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -75,6 +76,29 @@ self.addEventListener("fetch", (event) => {
 
         return networkResponse;
       });
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const roomCode = event.notification.data?.roomCode;
+  const targetUrl = roomCode ? `./?room=${roomCode}` : "./";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          if (roomCode && client.url) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });
